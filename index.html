@@ -1,1 +1,660 @@
 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 2D Dashboard — 3-Model Calibrated Engine</title>
+  <style>
+    :root {
+      --bg-body: #0f1314;
+      --bg-panel: #14191b;
+      --bg-row: #171d1f;
+      --bg-row-alt: #13181a;
+      --border-subtle: #242d30;
+      --text-main: #e6ecee;
+      --text-muted: #7c8b90;
+      --purple-res: #9d7bf7;
+      --green-win-bg: rgba(16, 185, 129, 0.16);
+      --green-win-border: #10b981;
+      --green-win-text: #34d399;
+      --orange-streak: #f59e0b;
+      --yellow-live: #fbbf24;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 720px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+    }
+
+    /* Header & Controls */
+    .top-bar {
+      padding: 14px 16px;
+      background: #111618;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title-group h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      color: var(--yellow-live);
+    }
+
+    .title-group p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    select, button {
+      background: #1c2427;
+      color: var(--text-main);
+      border: 1px solid #2e3a3e;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    select:hover, button:hover {
+      border-color: #4b5e65;
+      background: #222c30;
+    }
+
+    button.primary {
+      background: rgba(16, 185, 129, 0.18);
+      border-color: var(--green-win-border);
+      color: var(--green-win-text);
+      font-weight: 600;
+    }
+
+    button.danger {
+      color: #f87171;
+      border-color: rgba(248, 113, 113, 0.35);
+    }
+
+    /* Table Header */
+    .grid-header {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+      padding: 10px 14px;
+      background: #111517;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .grid-header div:first-child {
+      text-align: left;
+    }
+
+    /* Market Rows */
+    .market-row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+      align-items: center;
+      padding: 9px 14px;
+      border-bottom: 1px solid rgba(36, 45, 48, 0.65);
+      background: var(--bg-row);
+      transition: background 0.15s;
+    }
+
+    .market-row:nth-child(even) {
+      background: var(--bg-row-alt);
+    }
+
+    .market-row:hover {
+      background: #1c2326;
+    }
+
+    .market-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .market-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .zone-badge {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-weight: 700;
+      background: #232d31;
+      color: #94a3b8;
+    }
+
+    .market-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: "JetBrains Mono", "Roboto Mono", monospace;
+      margin-top: 2px;
+    }
+
+    /* Result Cell */
+    .res-cell {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .res-value {
+      font-family: "JetBrains Mono", "Roboto Mono", monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--purple-res);
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .res-empty {
+      color: var(--text-muted);
+      font-family: monospace;
+      font-size: 14px;
+      padding: 4px 12px;
+      border-radius: 6px;
+    }
+
+    .res-empty:hover, .res-value:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .res-live {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px 14px;
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      border-radius: 6px;
+      background: rgba(251, 191, 36, 0.06);
+    }
+
+    .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--yellow-live);
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: scale(0.85); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+
+    /* AI Prediction Cells */
+    .ai-cell {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ai-box {
+      position: relative;
+      font-family: "JetBrains Mono", "Roboto Mono", monospace;
+      font-size: 14.5px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      color: #cbd5e1;
+      padding: 5px 11px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      min-width: 66px;
+      text-align: center;
+    }
+
+    .ai-box.win {
+      background: var(--green-win-bg);
+      border-color: var(--green-win-border);
+      color: var(--green-win-text);
+      font-weight: 700;
+    }
+
+    .ai-box.streak-hot {
+      border-bottom: 2.5px solid var(--orange-streak);
+      border-bottom-left-radius: 3px;
+      border-bottom-right-radius: 3px;
+    }
+
+    .streak-badge {
+      position: absolute;
+      top: -6px;
+      right: -2px;
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--orange-streak);
+      background: var(--bg-panel);
+      padding: 0 3px;
+      border-radius: 3px;
+      line-height: 1.1;
+    }
+
+    /* Footer Summary */
+    .summary-footer {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+      align-items: center;
+      padding: 13px 14px;
+      background: #1b2225;
+      border-top: 1px solid var(--border-subtle);
+      font-weight: 700;
+    }
+
+    .summary-label {
+      font-size: 12.5px;
+      letter-spacing: 0.5px;
+      color: #cbd5e1;
+    }
+
+    .summary-stat {
+      text-align: center;
+      font-family: "JetBrains Mono", "Roboto Mono", monospace;
+      font-size: 15px;
+      color: #ffffff;
+    }
+
+    /* Drawer / Modal for New Input */
+    .input-drawer {
+      display: none;
+      padding: 14px 16px;
+      background: #101416;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .input-drawer.open {
+      display: block;
+    }
+
+    .input-drawer textarea {
+      width: 100%;
+      height: 110px;
+      background: #171d20;
+      color: var(--text-main);
+      border: 1px solid #2e3a3e;
+      border-radius: 6px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      margin-top: 8px;
+      resize: vertical;
+    }
+
+    .drawer-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .hint-text {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="top-bar">
+    <div class="title-group">
+      <h1 id="sessionTitle">AI 2D ENGINE — SENIN, 16/11/2026</h1>
+      <p id="sessionSubtitle">Kalibrasi 18 Hari • Klik kolom RESULT untuk input/ubah hasil</p>
+    </div>
+    <div class="controls">
+      <select id="presetSelect" onchange="loadPreset(this.value)">
+        <option value="2026-11-16">Senin, 16/11 (Berjalan)</option>
+        <option value="2026-11-15">Minggu, 15/11 (Final)</option>
+        <option value="clean">Mode Bersih (Kosong)</option>
+      </select>
+      <button onclick="toggleDrawer()">+ Input BBFS Baru</button>
+      <button class="primary" onclick="copyWhatsAppRecap()">Salin Rekap WA</button>
+    </div>
+  </div>
+
+  <div id="inputDrawer" class="input-drawer">
+    <div class="hint-text">
+      Tempel data tabel harian dengan format per baris: <b>Nama Pasaran | (K/E)BBFS | NA | RESULT</b> (gunakan <code>-</code> jika belum result, atau <code>LIVE</code> untuk animasi menunggu).<br/>
+      Contoh: <code>North Carolina Day | (29706)813 | 45 | 3657</code>
+    </div>
+    <textarea id="bulkInput" placeholder="North Carolina Day | (29706)813 | 45 | 3657&#10;Oregon 6 | (34568)017 | 29 | 7907"></textarea>
+    <div class="drawer-actions">
+      <button class="danger" onclick="clearAllRows()">Bersihkan Semua</button>
+      <button onclick="toggleDrawer()">Tutup</button>
+      <button class="primary" onclick="parseBulkInput()">Proses & Hitung AI</button>
+    </div>
+  </div>
+
+  <div class="grid-header">
+    <div>Pasaran</div>
+    <div>Result</div>
+    <div>AI 1 (Golden)</div>
+    <div>AI 2 (Split)</div>
+    <div>AI 3 (Tail)</div>
+  </div>
+
+  <div id="rowsContainer"></div>
+
+  <div class="summary-footer">
+    <div class="summary-label">MENANG / MAIN</div>
+    <div class="summary-stat" id="statRes">—</div>
+    <div class="summary-stat" id="statM1">0/0</div>
+    <div class="summary-stat" id="statM2">0/0</div>
+    <div class="summary-stat" id="statM3">0/0</div>
+  </div>
+</div>
+
+<script>
+  // Master 15 Pasaran Pilihan & Jadwal WIB
+  const MARKET_META = {
+    "North Carolina Day": { time: "01:45", zone: "WLA" },
+    "Oregon 6":           { time: "05:45", zone: "WLA" },
+    "California":         { time: "08:30", zone: "WLA" },
+    "Oregon 9":           { time: "08:45", zone: "WLA" },
+    "New York Eve":       { time: "09:15", zone: "WLA" },
+    "North Carolina Eve": { time: "10:15", zone: "WLA" },
+    "Oregon 12":          { time: "11:45", zone: "WLA" },
+    "Cambodia":           { time: "11:30", zone: "HKB" },
+    "Macau 16":           { time: "15:55", zone: "HKB" },
+    "Japan Pools":        { time: "17:00", zone: "HKB" },
+    "Macau 19":           { time: "18:55", zone: "HKB" },
+    "Taiwan Pools":       { time: "20:30", zone: "HKB" },
+    "Macau 22":           { time: "21:55", zone: "HKB" },
+    "HK Pools":           { time: "22:30", zone: "HKB" },
+    "HK Lotto":           { time: "22:45", zone: "HKB" }
+  };
+
+  // Dataset Historis Terkalibrasi
+  const PRESETS = {
+    "2026-11-16": {
+      title: "AI 2D ENGINE — SENIN, 16/11/2026",
+      rows: [
+        { name: "North Carolina Day", bbfs: "(29706)813", na: "45", res: "3657" },
+        { name: "Oregon 6",           bbfs: "(34568)017", na: "29", res: "7907" },
+        { name: "California",         bbfs: "(17534)602", na: "89", res: "9927" },
+        { name: "Oregon 9",           bbfs: "(15047)823", na: "69", res: "0466" },
+        { name: "New York Eve",       bbfs: "(45697)801", na: "23", res: "7685" },
+        { name: "North Carolina Eve", bbfs: "(42501)369", na: "78", res: "1251" },
+        { name: "Oregon 12",          bbfs: "(57360)214", na: "89", res: "LIVE" },
+        { name: "Cambodia",           bbfs: "(93714)056", na: "28", res: "7570" },
+        { name: "Macau 16",           bbfs: "(92403)681", na: "57", res: "-" },
+        { name: "Japan Pools",        bbfs: "(40523)891", na: "67", res: "-" },
+        { name: "Macau 19",           bbfs: "(02578)913", na: "46", res: "-" },
+        { name: "Taiwan Pools",       bbfs: "(40312)695", na: "78", res: "-" },
+        { name: "Macau 22",           bbfs: "(48036)915", na: "27", res: "-" },
+        { name: "HK Pools",           bbfs: "(84591)207", na: "36", res: "-" },
+        { name: "HK Lotto",           bbfs: "(49085)126", na: "37", res: "-" }
+      ]
+    },
+    "2026-11-15": {
+      title: "AI 2D ENGINE — MINGGU, 15/11/2026",
+      rows: [
+        { name: "North Carolina Day", bbfs: "(92056)813", na: "47", res: "0277" },
+        { name: "Oregon 6",           bbfs: "(34801)567", na: "29", res: "0443" },
+        { name: "California",         bbfs: "(17054)236", na: "89", res: "5356" },
+        { name: "Oregon 9",           bbfs: "(15043)789", na: "26", res: "7652" },
+        { name: "New York Eve",       bbfs: "(41586)792", na: "03", res: "3906" },
+        { name: "North Carolina Eve", bbfs: "(24580)136", na: "79", res: "9254" },
+        { name: "Oregon 12",          bbfs: "(75364)012", na: "89", res: "6502" },
+        { name: "Cambodia",           bbfs: "(93714)025", na: "68", res: "2793" },
+        { name: "Macau 16",           bbfs: "(92401)368", na: "57", res: "9249" },
+        { name: "Japan Pools",        bbfs: "(40235)789", na: "16", res: "6251" },
+        { name: "Macau 19",           bbfs: "(02579)134", na: "68", res: "4821" },
+        { name: "Taiwan Pools",       bbfs: "(60134)257", na: "89", res: "3492" },
+        { name: "Macau 22",           bbfs: "(84013)596", na: "27", res: "5446" },
+        { name: "HK Pools",           bbfs: "(82479)150", na: "36", res: "2045" },
+        { name: "HK Lotto",           bbfs: "(49086)125", na: "37", res: "3795" }
+      ]
+    },
+    "clean": {
+      title: "AI 2D ENGINE — SESI BARU (BERSIH)",
+      rows: Object.keys(MARKET_META).map(name => ({ name, bbfs: "", na: "", res: "-" }))
+    }
+  };
+
+  let currentRows = [];
+
+  // Algoritma 3 Kolom Terkalibrasi (Menjamin 4 digit unik)
+  function computeThreeModels(bbfsStr, naStr) {
+    const match = bbfsStr.match(/\(([0-9]{5})\)([0-9]{3})/);
+    if (!match || !naStr || naStr.length < 2) {
+      return ["----", "----", "----"];
+    }
+    const core = match[1].split("");   // 5 digit inti dalam kurung
+    const outer = match[2].split("");  // 3 digit luar kurung
+    const na = naStr.trim().split(""); // 2 digit NA
+    const pool = [...core, ...na, ...outer];
+
+    function buildUnique4(candidates) {
+      const res = [];
+      for (const d of candidates) {
+        if (/[0-9]/.test(d) && !res.includes(d)) res.push(d);
+        if (res.length === 4) break;
+      }
+      for (const d of pool) {
+        if (res.length < 4 && !res.includes(d)) res.push(d);
+      }
+      return res.join("");
+    }
+
+    // Model 1: Golden Rule Utama (3 Inti Depan + Ekor NA)
+    const m1 = buildUnique4([core[0], core[1], core[2], na[1]]);
+    // Model 2: Split Core (Depan, Tengah, Ekor Kurung + Tengah Luar)
+    const m2 = buildUnique4([core[0], core[2], core[4], outer[1]]);
+    // Model 3: Tail Shift HKB (Ekor Kurung + Depan NA)
+    const m3 = buildUnique4([core[1], core[3], core[4], na[0]]);
+
+    return [m1, m2, m3];
+  }
+
+  function check2DWin(aiCode, result4D) {
+    if (!result4D || result4D === "-" || result4D === "LIVE" || result4D.length < 2 || aiCode.includes("-")) {
+      return null;
+    }
+    const last2D = result4D.slice(-2);
+    return aiCode.includes(last2D[0]) || aiCode.includes(last2D[1]);
+  }
+
+  function renderDashboard() {
+    const container = document.getElementById("rowsContainer");
+    container.innerHTML = "";
+
+    let playedCount = 0;
+    let wins = [0, 0, 0];
+    let streaks = [0, 0, 0];
+
+    // Hitung status & win streak beruntun
+    const computed = currentRows.map((row) => {
+      const models = computeThreeModels(row.bbfs, row.na);
+      const isPlayed = /^\d{4}$/.test(row.res);
+      if (isPlayed) playedCount++;
+
+      const outcomes = models.map((code, idx) => {
+        const isWin = check2DWin(code, row.res);
+        if (isWin === true) {
+          wins[idx]++;
+          streaks[idx]++;
+        } else if (isWin === false) {
+          streaks[idx] = 0;
+        }
+        return { code, isWin, streak: streaks[idx] };
+      });
+
+      return { ...row, isPlayed, outcomes };
+    });
+
+    // Render baris
+    computed.forEach((row, rowIndex) => {
+      const meta = MARKET_META[row.name] || { time: "--:--", zone: "WLA/HKB" };
+      const rowEl = document.createElement("div");
+      rowEl.className = "market-row";
+
+      let resHtml = "";
+      if (row.res === "LIVE") {
+        resHtml = `<div class="res-live" title="Klik untuk input result"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
+      } else if (row.isPlayed) {
+        resHtml = `<span class="res-value" title="Klik untuk ubah result">${row.res}</span>`;
+      } else {
+        resHtml = `<span class="res-empty" title="Klik untuk input result">—</span>`;
+      }
+
+      const aiCellsHtml = row.outcomes.map((o) => {
+        const winClass = o.isWin === true ? "win" : "";
+        const hotClass = o.streak >= 3 ? "streak-hot" : "";
+        const badgeHtml = o.streak >= 3 ? `<span class="streak-badge">${o.streak}</span>` : "";
+        return `
+          <div class="ai-cell">
+            <div class="ai-box ${winClass} ${hotClass}">
+              ${badgeHtml}${o.code}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      rowEl.innerHTML = `
+        <div class="market-info">
+          <div class="market-name">${row.name} <span class="zone-badge">${meta.zone}</span></div>
+          <div class="market-time">${meta.time} WIB</div>
+        </div>
+        <div class="res-cell" onclick="editResult(${rowIndex})">${resHtml}</div>
+        ${aiCellsHtml}
+      `;
+      container.appendChild(rowEl);
+    });
+
+    document.getElementById("statRes").textContent = `${playedCount}/${currentRows.length}`;
+    document.getElementById("statM1").textContent = `${wins[0]}/${playedCount}`;
+    document.getElementById("statM2").textContent = `${wins[1]}/${playedCount}`;
+    document.getElementById("statM3").textContent = `${wins[2]}/${playedCount}`;
+  }
+
+  function editResult(index) {
+    const row = currentRows[index];
+    const input = prompt(`Masukkan Result 4D untuk ${row.name} (ketik LIVE untuk menunggu, atau - untuk kosong):`, row.res);
+    if (input === null) return;
+    const cleaned = input.trim().toUpperCase();
+    if (/^\d{4}$/.test(cleaned) || cleaned === "LIVE" || cleaned === "-") {
+      currentRows[index].res = cleaned;
+      renderDashboard();
+    } else {
+      alert("Format harus 4 digit angka (contoh: 3657), LIVE, atau -");
+    }
+  }
+
+  function loadPreset(key) {
+    const preset = PRESETS[key];
+    document.getElementById("sessionTitle").textContent = preset.title;
+    currentRows = JSON.parse(JSON.stringify(preset.rows));
+    renderDashboard();
+  }
+
+  function toggleDrawer() {
+    document.getElementById("inputDrawer").classList.toggle("open");
+  }
+
+  function clearAllRows() {
+    document.getElementById("presetSelect").value = "clean";
+    loadPreset("clean");
+  }
+
+  function parseBulkInput() {
+    const raw = document.getElementById("bulkInput").value.trim();
+    if (!raw) return;
+    const lines = raw.split("\n");
+    lines.forEach(line => {
+      const parts = line.split("|").map(s => s.trim());
+      if (parts.length >= 3) {
+        const [name, bbfs, na, res = "-"] = parts;
+        const target = currentRows.find(r => r.name.toLowerCase() === name.toLowerCase());
+        if (target) {
+          target.bbfs = bbfs;
+          target.na = na;
+          target.res = res;
+        }
+      }
+    });
+    renderDashboard();
+    toggleDrawer();
+  }
+
+  function copyWhatsAppRecap() {
+    const title = document.getElementById("sessionTitle").textContent.replace("AI 2D ENGINE — ", "");
+    let wlaLines = [], hkbLines = [];
+    let wlaW = 0, wlaL = 0, hkbW = 0, hkbL = 0;
+
+    currentRows.forEach(row => {
+      const meta = MARKET_META[row.name] || { zone: "WLA" };
+      const [m1] = computeThreeModels(row.bbfs, row.na);
+      const isWin = check2DWin(m1, row.res);
+      let mark = "";
+      if (isWin === true) {
+        mark = " ✓";
+        meta.zone === "WLA" ? wlaW++ : hkbW++;
+      } else if (isWin === false) {
+        mark = " ×";
+        meta.zone === "WLA" ? wlaL++ : hkbL++;
+      }
+      const line = `• ${row.name} : *${m1}*${mark}`;
+      meta.zone === "WLA" ? wlaLines.push(line) : hkbLines.push(line);
+    });
+
+    const text = `📌 *AI 2D HARIAN (PASARAN PILIHAN) — ${title}*\n\n*▸ ZONA WLA*\n${wlaLines.join("\n")}\n\n*\`\`\`Stop Loss Profit Taking\`\`\`*\nWin : ${wlaW}\nLose : ${wlaL}\n\n======================\n\n*▸ ZONA HKB*\n${hkbLines.join("\n")}\n\n*\`\`\`Stop Loss Profit Taking\`\`\`*\nWin : ${hkbW}\nLose : ${hkbL}`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      alert("Rekapan format WhatsApp berhasil disalin ke clipboard!");
+    });
+  }
+
+  // Inisialisasi awal
+  loadPreset("2026-11-16");
+</script>
+</body>
+</html>
